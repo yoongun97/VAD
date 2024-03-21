@@ -1,5 +1,8 @@
 import { useMicVAD, utils } from "@ricky0123/vad-react"
 import { useState } from "react"
+import axios from 'axios'
+
+const OPENAI_API_KEY = process.env.NEXT_PUBLIC_OPENAI_API_KEY
 
 export const Demo = () => {
   const [audioList, setAudioList] = useState<string[]>([])
@@ -8,40 +11,45 @@ export const Demo = () => {
       const wavBuffer = utils.encodeWAV(audio)
       const base64 = utils.arrayBufferToBase64(wavBuffer)
       const url = `data:audio/wav;base64,${base64}`
-      setAudioList((old) => {
-        return [url, ...old]
+      fetch(url).then((res) => {
+        res.blob().then((blob) => {
+          const formData = new FormData();
+          formData.append("file", blob, "audio.wav");
+          formData.append("model", "whisper-1");
+          axios.post('https://api.openai.com/v1/audio/transcriptions', formData, {
+            headers: {
+              Authorization: `Bearer ${OPENAI_API_KEY}`,
+              'Content-Type': 'multipart/form-data'
+            },
+        }).then((res) => {
+          console.log(res.data.text);
+          const newText = res.data.text
+          setAudioList((old) => {
+            return [newText, ...old]
+          })
+        })
       })
-    },
-  })
-
+    })
+  },
+})
 
   return (
     <div className='mx-auto flex flex-col items-center pt-6 '>
-      {/* <h6>Listening</h6>
-      <p>{!vad.listening && "Not"} listening</p>
-      <h6>Loading</h6>
-      <p>{!vad.loading && "Not"} loading</p>
-      <h6>Errored</h6>
-      <p>{!vad.errored && "Not"} errored</p>
-      <h6>User Speaking</h6>
-      <p> {!vad.userSpeaking && "Not"} speaking</p>
-      <h6>Audio count</h6>
-      <p>{audioList.length}</p> */}
       <h6>State</h6>
       <p>{vad.listening && "듣는 중"}</p>
       <p>{vad.loading && "대기 중"}</p>
       <p>{vad.errored && "errored"}</p>
-      <p>{vad.userSpeaking && "말하는 중"}</p>
+      <p>{vad.userSpeaking && "녹음 중"}</p>
       <h6>Start/Pause</h6>
-      {/* <button onClick={vad.pause}>Pause</button>
-      <button onClick={vad.start}>Start</button> */}
-      <button onClick={vad.toggle}>toggle</button>
+      <button onClick={vad.pause}>Pause</button>
+      <button onClick={vad.start}>Start</button>
+      {/* <button onClick={vad.toggle}>toggle</button> */}
       <h6>audioList</h6>
       <ol>
-        {audioList.map((val)=>{
+        {audioList.map((val, index)=>{
           return (
-            <li>
-            <audio src={val} controls/>
+            <li key={index}>
+            {val}
             </li>
           )
         })}
